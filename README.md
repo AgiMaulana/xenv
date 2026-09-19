@@ -10,6 +10,7 @@ AI optimized secret reader and redactor.
 - **Safe existence checks** — confirms whether a key exists, printing `<available>` or `<missing>` instead of the value
 - **JSON output** — machine-friendly output for AI agents (`--json` / `-j`)
 - **Custom secret file** — point at any file with `--input` / `-i` (defaults to `secret`)
+- **Safe exports** — derives a shell `export` command from a secret without printing the value to an interactive terminal
 
 ## Installation
 
@@ -76,6 +77,20 @@ Use a custom secret file:
 ```bash
 xenv -i .env.production read
 ```
+
+Export a secret into another environment variable. The command refuses to print the generated command when stdout is an interactive terminal, so use it with `eval`:
+
+```bash
+eval "$(xenv export --derive DATABASE_URL --key APP_DATABASE_URL)"
+```
+
+With a custom secret file:
+
+```bash
+eval "$(xenv -i .env.production export -d DATABASE_URL -k APP_DATABASE_URL)"
+```
+
+The export value is shell-quoted by `xenv`; avoid logging or otherwise exposing the command substitution output.
 
 ### Exit codes
 
