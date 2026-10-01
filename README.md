@@ -6,10 +6,10 @@ AI optimized secret reader and redactor.
 
 ## Features
 
-- **Redacted reads** — lists every variable in your secret file with values replaced by `<redacted>`
-- **Safe existence checks** — confirms whether a key exists, printing `<available>` or `<missing>` instead of the value
+- **Redacted reads** — lists every variable with values replaced by `<redacted>`, from the process environment or a secret file
+- **Safe existence checks** — reports `<available>` or `<not-exist>` instead of the value
 - **JSON output** — machine-friendly output for AI agents (`--json` / `-j`)
-- **Custom secret file** — point at any file with `--input` / `-i` (defaults to `secret`)
+- **Environment or file source** — reads from the process environment by default; point at a file with `--input` / `-i`
 - **Safe exports** — derives a shell `export` command from a secret without printing the value to an interactive terminal
 
 ## Recommended `AGENT.md` instruction
@@ -71,7 +71,9 @@ go build
 
 ## Usage
 
-List all secret keys, with values redacted:
+By default `xenv` reads from the process environment. Pass `--input` / `-i` to read from a secret file instead.
+
+List all keys, with values redacted:
 
 ```bash
 xenv read
@@ -80,7 +82,8 @@ xenv read
 Check whether a specific key exists:
 
 ```bash
-xenv check DATABASE_URL
+xenv check DATABASE_URL                      # from the process environment
+xenv -i .env.production check DATABASE_URL   # from a secret file
 ```
 
 Use JSON output for AI-friendly results:
@@ -90,7 +93,7 @@ xenv read --json
 # {"API_KEY":"<redacted>","DATABASE_URL":"<redacted>"}
 
 xenv check DATABASE_URL --json
-# {"key":"DATABASE_URL","exists":true}
+# {"key":"DATABASE_URL","exists":true,"state":"available"}
 ```
 
 Use a custom secret file:
@@ -98,6 +101,8 @@ Use a custom secret file:
 ```bash
 xenv -i .env.production read
 ```
+
+If the given file does not exist, `xenv` falls back to the process environment.
 
 Export a secret into another environment variable. The command refuses to print the generated command when stdout is an interactive terminal, so use it with `eval`:
 
