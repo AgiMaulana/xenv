@@ -59,7 +59,7 @@ jobs:
         run: |
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
-          go build -trimpath -ldflags "-s -w" \
+          go build -trimpath -ldflags "-s -w -X xenv/cmd.version=${VERSION}" \
             -o "dist/xenv-${GOOS}-${GOARCH}${EXT}" .
 
       - name: Upload build artifact
