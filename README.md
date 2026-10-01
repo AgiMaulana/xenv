@@ -61,13 +61,40 @@ Or with Go:
 go install github.com/AgiMaulana/xenv@latest
 ```
 
+## Updating
+
+Once installed, update to the latest release:
+
+```bash
+xenv update
+```
+
+Or pin a specific version:
+
+```bash
+xenv update --version v0.0.1
+```
+
+Check the current version:
+
+```bash
+xenv version
+```
+
 Or build from source:
+
+```bash
+go install github.com/AgiMaulana/xenv@latest
+```
+
+Or clone and build:
 
 ```bash
 git clone https://github.com/AgiMaulana/xenv
 cd xenv
-go build
+go build -ldflags "-X xenv/cmd.version=$(git describe --tags --always)" -o xenv .
 ```
+
 
 ## Usage
 
