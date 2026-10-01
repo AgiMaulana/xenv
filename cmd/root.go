@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"bufio"
+	"encoding/json"
+	"errors"
 	"os"
-	"strings"
+
+	"xenv/source"
 
 	"github.com/spf13/cobra"
 )
@@ -32,32 +34,37 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&inputFile, "input", "i", "secret", "Path to the secret file")
+	rootCmd.PersistentFlags().StringVarP(&inputFile, "input", "i", "", "Path to the secret file")
 	rootCmd.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "Output in AI-friendly JSON format")
 }
 
-func parseEnv(path string) (map[string]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+// newSourceManager builds the source chain shared by every command. An input
+// file, when provided and readable, is used as the source; otherwise the
+// process environment is used. A missing file also falls back to the
+// environment instead of failing.
+func newSourceManager() (*source.Manager, error) {
+	var sources []source.Source
 
-	envVars := make(map[string]string)
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			envVars[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	if inputFile != "" {
+		fileSource, err := source.NewFileSource(inputFile)
+		if err == nil {
+			sources = append(sources, fileSource)
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
 		}
 	}
 
-	return envVars, scanner.Err()
+	if len(sources) == 0 {
+		sources = append(sources, &source.SystemSource{})
+	}
+
+	return source.NewManager(sources...), nil
+}
+
+// printJSON writes v as JSON without HTML-escaping, so characters like < and >
+// used by the state labels stay readable.
+func printJSON(v interface{}) {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	_ = encoder.Encode(v)
 }
