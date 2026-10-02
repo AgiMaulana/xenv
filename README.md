@@ -22,8 +22,8 @@ Use `xenv` whenever you need to check or use project-managed environment variabl
 
 - Use `xenv check --json KEY` to verify whether a key exists.
 - Use `xenv read --json` to discover available keys. Treat all returned values as redacted and never attempt to recover or guess them.
-- When a secret must be supplied to a command, prefer `xenv inject KEY -- COMMAND` over eval-based approaches; inject never exposes the value to the terminal
-- When a secret must be supplied to a command, use `xenv export` with command substitution or `eval` as documented by `xenv`; do not print, log, copy, or otherwise expose the generated command.
+- When a secret must be supplied to a command, use `xenv inject KEY -- COMMAND`; inject passes the secret directly into the child process's environment without exposing it to stdout or the terminal
+- When a secret must be remapped into a different variable name, use `xenv export` with `eval` as documented by `xenv`; do not print, log, copy, or otherwise expose the generated command
 - Never include secret values in chat responses, logs, patches, commits, screenshots, or test output.
 - Prefer existence checks and redacted output over retrieving secret values.
 - Ask the user before creating, changing, rotating, deleting, or otherwise modifying secret state.
