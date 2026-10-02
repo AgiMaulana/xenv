@@ -4,13 +4,12 @@ AI optimized secret reader and redactor.
 
 `xenv` lets AI agents and coding tools discover which secrets exist in your environment — key names and existence checks — without ever exposing their values.
 
-## Features
-
 - **Redacted reads** — lists every variable with values replaced by `<redacted>`, from the process environment or a secret file
 - **Safe existence checks** — reports `<available>` or `<not-exist>` instead of the value
 - **JSON output** — machine-friendly output for AI agents (`--json` / `-j`)
 - **Environment or file source** — reads from the process environment by default; point at a file with `--input` / `-i`
 - **Safe exports** — derives a shell `export` command from a secret without printing the value to an interactive terminal
+- **Process injection** — injects secrets directly into a child process's environment without writing to stdout or the parent shell
 
 ## Recommended `AGENT.md` instruction
 
@@ -23,7 +22,8 @@ Use `xenv` whenever you need to check or use project-managed environment variabl
 
 - Use `xenv check --json KEY` to verify whether a key exists.
 - Use `xenv read --json` to discover available keys. Treat all returned values as redacted and never attempt to recover or guess them.
-- When a secret must be supplied to a command, use `xenv export` with command substitution or `eval` as documented by `xenv`; do not print, log, copy, or otherwise expose the generated command.
+- When a secret must be supplied to a command, use `xenv inject KEY -- COMMAND`; inject passes the secret directly into the child process's environment without exposing it to stdout or the terminal
+- When a secret must be remapped into a different variable name, use `xenv export` with `eval` as documented by `xenv`; do not print, log, copy, or otherwise expose the generated command
 - Never include secret values in chat responses, logs, patches, commits, screenshots, or test output.
 - Prefer existence checks and redacted output over retrieving secret values.
 - Ask the user before creating, changing, rotating, deleting, or otherwise modifying secret state.
@@ -100,6 +100,34 @@ go build -ldflags "-X xenv/cmd.version=$(git describe --tags --always)" -o xenv 
 
 By default `xenv` reads from the process environment. Pass `--input` / `-i` to read from a secret file instead.
 
+Secrets into a child process — no stdout exposure:
+
+```bash
+xenv inject API_KEY -- curl -H "Authorization: Bearer $API_KEY" https://api.example.com
+
+xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
+```
+
+The `--` separator is optional when the command has no flags:
+
+```bash
+xenv inject API_KEY printenv API_KEY
+```
+
+Secrets exist only in the child process's environment. When the command exits, they are gone:
+
+```bash
+xenv inject API_KEY -- ./deploy.sh
+echo $API_KEY   # (empty — not in the parent shell)
+```
+
+If a requested key is not found, `inject` fails before executing the command:
+
+```bash
+xenv inject MISSING_KEY -- echo should-not-run
+# Error: key "MISSING_KEY" not found in any source
+```
+
 List all keys, with values redacted:
 
 ```bash
@@ -148,6 +176,7 @@ The export value is shell-quoted by `xenv`; avoid logging or otherwise exposing 
 ### Exit codes
 
 `check` exits with code `1` when the key does not exist, so it can be used directly in shell scripts.
+`inject` exits with code `1` when a requested key is not found or the command cannot be executed.
 
 ## Secret file format
 
