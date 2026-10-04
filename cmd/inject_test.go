@@ -114,6 +114,29 @@ func TestInjectCommand_WithoutDashDashSeparator(t *testing.T) {
 	}
 }
 
+func TestInjectCommand_MultipleKeys(t *testing.T) {
+	dir := t.TempDir()
+	envFile := filepath.Join(dir, ".env")
+	if err := os.WriteFile(envFile, []byte("FIRST=one\nSECOND=two\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(bin,
+		"-i", envFile,
+		"inject", "FIRST", "SECOND", "--",
+		"sh", "-c", `printf '%s %s' "$FIRST" "$SECOND"`,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("inject failed: %v\nstderr: %s", err, string(out))
+	}
+
+	got := strings.TrimSpace(string(out))
+	if got != "one two" {
+		t.Fatalf("expected 'one two', got %q", got)
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Build the test binary once before all tests.
 	dir, err := os.MkdirTemp("", "xenv-test-bin-*")

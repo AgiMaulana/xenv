@@ -20,8 +20,12 @@ The secret values are never printed to the terminal. They exist only
 in the child process's environment for the duration of the command.
 
 Examples:
-  xenv inject API_KEY -- curl -H "Authorization: Bearer $API_KEY" https://api.example.com
+  xenv inject API_KEY -- sh -c 'curl -H "Authorization: Bearer $API_KEY" https://api.example.com'
   xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
+
+Wrap commands that reference the injected variable in sh -c '...' (or a
+script): your shell expands $VAR before xenv runs, so a bare command line
+expands to the parent's value, not the injected one.
 
 If a requested key is not found in any source, inject fails with an
 error before starting the command.
@@ -34,26 +38,24 @@ error before starting the command.
 			os.Exit(1)
 		}
 
-		// Collect keys until we hit "--" separator or run out of args.
-		// args[0] is the first key; we need to find where COMMAND starts.
-		sepIndex := -1
-		for i, a := range args {
-			if a == "--" {
-				sepIndex = i
-				break
-			}
-		}
-
+		// Keys come before the "--" separator; the command follows it.
+		// pflag consumes the literal "--" before Run sees args, so we recover
+		// its position with ArgsLenAtDash. Without a separator, only the first
+		// arg is a key and the rest is the command.
 		var keys []string
 		var commandArgs []string
 
-		if sepIndex >= 0 {
-			keys = args[:sepIndex]
-			commandArgs = args[sepIndex+1:]
+		if dash := cmd.Flags().ArgsLenAtDash(); dash >= 0 {
+			keys = args[:dash]
+			commandArgs = args[dash:]
 		} else {
-			// No "--" separator: first arg is the only key, rest is the command.
 			keys = args[:1]
 			commandArgs = args[1:]
+		}
+
+		if len(keys) == 0 {
+			fmt.Fprintf(os.Stderr, "Error: no keys specified\n")
+			os.Exit(1)
 		}
 
 		if len(commandArgs) == 0 {
