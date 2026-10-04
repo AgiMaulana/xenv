@@ -20,8 +20,12 @@ The secret values are never printed to the terminal. They exist only
 in the child process's environment for the duration of the command.
 
 Examples:
-  xenv inject API_KEY -- curl -H "Authorization: Bearer $API_KEY" https://api.example.com
+  xenv inject API_KEY -- sh -c 'curl -H "Authorization: Bearer $API_KEY" https://api.example.com'
   xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
+
+Wrap commands that reference the injected variable in sh -c '...' (or a
+script): your shell expands $VAR before xenv runs, so a bare command line
+expands to the parent's value, not the injected one.
 
 If a requested key is not found in any source, inject fails with an
 error before starting the command.

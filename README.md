@@ -111,10 +111,12 @@ By default `xenv` reads from the process environment. Pass `--input` / `-i` to r
 Secrets into a child process — no stdout exposure:
 
 ```bash
-xenv inject API_KEY -- curl -H "Authorization: Bearer $API_KEY" https://api.example.com
+xenv inject API_KEY -- sh -c 'curl -H "Authorization: Bearer $API_KEY" https://api.example.com'
 
 xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
 ```
+
+The child shell expands `$API_KEY`, not your interactive shell. Wrapping the command in `sh -c '...'` is what makes that work: without it, your shell expands `$API_KEY` before `xenv` runs and the value is empty.
 
 The `--` separator is optional when the command has no flags:
 

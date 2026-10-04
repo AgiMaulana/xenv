@@ -22,13 +22,13 @@ Use `xenv` any time the work involves:
 
 ## Preconditions
 
-Confirm `xenv` is available before relying on it:
+Before you rely on `xenv` to handle a secret, confirm it is available:
 
 ```bash
 xenv version
 ```
 
-If it is missing, install it (see the xenv README) and confirm with the user before changing their system. If `xenv` is unavailable or errors, stop and explain — do not silently fall back to reading `.env` files by hand unless the user explicitly authorizes it.
+`xenv` is only needed when a secret is actually involved. If no secret is involved, you do not need it at all. When one is, and `xenv` is missing or errors, follow the fallback guidance below rather than reading secret files directly.
 
 ## Core rules
 
@@ -64,14 +64,33 @@ xenv check DATABASE_URL --json
 
 ### 3. Run a command that needs a secret
 
-Pass the secret straight into a child process instead of exporting it into the shell:
+`inject` puts the secret into the child process's environment, not the parent's. That distinction matters, because the shell expands `$VAR` in the command line *before* `xenv` runs — using the parent environment, where the injected value does not exist yet. So a bare command line silently drops the secret:
 
 ```bash
+# WRONG: $API_KEY expands in the parent shell (usually empty) before inject runs
 xenv inject API_KEY -- curl -H "Authorization: Bearer $API_KEY" https://api.example.com
-xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
 ```
 
-The value exists only in the child process and disappears when it exits. `inject` fails before running the command if any requested key is missing, so a typo cannot silently run with an empty variable. The `--` separator is optional when the command has no flags (`xenv inject API_KEY printenv API_KEY`).
+Make the child do the expansion by wrapping the command in a shell with single quotes, so the parent shell passes `$API_KEY` through literally:
+
+```bash
+xenv inject API_KEY -- sh -c 'curl -H "Authorization: Bearer $API_KEY" https://api.example.com'
+```
+
+For anything non-trivial, put the command in a script that reads the variable and invoke the script:
+
+```bash
+xenv inject API_KEY -- ./call-api.sh   # call-api.sh uses "$API_KEY"
+```
+
+Multiple keys work the same way; the `--` separator is optional when the command has no flags:
+
+```bash
+xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
+xenv inject API_KEY printenv API_KEY
+```
+
+The value exists only in the child process and disappears when it exits. `inject` fails before running the command if any requested key is missing, so a typo cannot silently run with an empty variable.
 
 ### 4. Remap a key into another variable
 
@@ -93,7 +112,7 @@ xenv -i .env.production check DATABASE_URL
 eval "$(xenv -i .env.production export -d DATABASE_URL -k APP_DATABASE_URL)"
 ```
 
-If the given file does not exist, `xenv` falls back to the process environment.
+If the given file does not exist, `xenv` silently falls back to the process environment. That fallback is worth calling out, because it undercuts what `-i` looks like it guarantees: `xenv -i .env.production check DATABASE_URL` returning `available` does **not** prove the value came from `.env.production` — it may have come from the process environment because the file was missing. When the source must be unambiguous, confirm the file exists before trusting the result, and say so rather than assuming.
 
 ## Exit codes
 
@@ -104,8 +123,11 @@ Use these instead of parsing output when scripting.
 
 ## Fallback
 
-If `xenv` fails or is not installed:
+`xenv` is only required when a task actually needs a secret. Plenty of environment-related work does not — running `npm test`, reading a non-secret config value, or using variables the user already provided in the process environment. Do not block those tasks just because `xenv` is missing.
 
-1. Stop and report the failure and what you were trying to do.
-2. Explain why reading the secret file directly is risky.
-3. Only proceed another way if the user explicitly authorizes it.
+When a secret *is* needed and `xenv` fails or is not installed:
+
+1. Stop before doing anything that would expose the value.
+2. Report the failure and what you were trying to do.
+3. Explain why reading the secret file directly is risky.
+4. Only proceed another way if the user explicitly authorizes it.
