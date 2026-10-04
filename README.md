@@ -33,6 +33,14 @@ Use `xenv` whenever you need to check or use project-managed environment variabl
 
 This instruction provides agent guidance; it is not an access-control boundary. Use `xenv`'s permissions and redaction behavior as the enforcement layer.
 
+## Agent skill
+
+If your coding agent supports skills (for example Claude Code), you can install the bundled skill instead of — or alongside — the `AGENT.md` instruction above. The skill teaches the agent the full `xenv` workflow (discover, check, inject, export) and loads on demand when a task involves environment variables or secrets.
+
+Copy [`skills/xenv`](./skills/xenv) into your agent's skills directory (for example `~/.claude/skills/xenv` or `.claude/skills/xenv`).
+
+The two approaches are complementary: keep a short always-on rule in `AGENT.md` so the secret-handling policy always applies, and let the skill carry the detailed workflow.
+
 ## Installation
 
 One-line install (downloads the latest release, verifies its signature and installs to `/usr/local/bin`):
