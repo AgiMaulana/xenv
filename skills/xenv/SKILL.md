@@ -22,13 +22,13 @@ Use `xenv` any time the work involves:
 
 ## Preconditions
 
-Before you rely on `xenv` to handle a secret, confirm it is available:
+Confirm `xenv` is available before relying on it:
 
 ```bash
 xenv version
 ```
 
-`xenv` is only needed when a secret is actually involved. If no secret is involved, you do not need it at all. When one is, and `xenv` is missing or errors, follow the fallback guidance below rather than reading secret files directly.
+If it is missing, install it (see the xenv README) and confirm with the user before changing their system. If it is unavailable when a secret is actually needed, follow the fallback guidance below rather than reading secret files directly.
 
 ## Core rules
 
@@ -83,7 +83,7 @@ For anything non-trivial, put the command in a script that reads the variable an
 xenv inject API_KEY -- ./call-api.sh   # call-api.sh uses "$API_KEY"
 ```
 
-Multiple keys work the same way; the `--` separator is optional when the command has no flags:
+Multiple keys are allowed. Use the `--` separator to separate the keys from the command; it is optional only for a single key:
 
 ```bash
 xenv inject GITHUB_TOKEN AWS_ACCESS_KEY_ID -- ./deploy.sh
@@ -123,9 +123,7 @@ Use these instead of parsing output when scripting.
 
 ## Fallback
 
-`xenv` is only required when a task actually needs a secret. Plenty of environment-related work does not — running `npm test`, reading a non-secret config value, or using variables the user already provided in the process environment. Do not block those tasks just because `xenv` is missing.
-
-When a secret *is* needed and `xenv` fails or is not installed:
+If a task needs a secret and `xenv` is unavailable or errors, stop rather than working around it:
 
 1. Stop before doing anything that would expose the value.
 2. Report the failure and what you were trying to do.
